@@ -2,19 +2,52 @@ module Main where
 
 import Graphics.UI.Gtk
 import Graphics.UI.Gtk.Gdk.GC
+import Test.QuickCheck
 
-width, height, nbSquares, squareSize :: Int
-width  = 500
-height  = width
-nbSquares = 20
-squareSize = width `div` nbSquares
+width, height, squareSize, canvasWidth, canvasHeight :: Int
+width  = 200 -- number of squares
+height  = 150 -- number of squares
+squareSize = 5 -- px
+canvasWidth = width * squareSize -- px
+canvasHeight = height * squareSize -- px
 
 -- Data types
 
+-- Direction: North, South, West, East
+data Direction = N | S | W | E
+  deriving(Eq, Show)
+
+-- Grid
+data Grid = Grid { rows :: [[Color]] }
+    deriving (Eq, Show)
 
 -- Types
 type Pos = (Int, Int)
 
+-- Position of the Ant is set
+type Ant = (Pos, Direction)
+
+-- Moving functions
+
+left :: Direction -> Direction
+left N = E
+left E = S
+left S = W
+left W = N
+
+right :: Direction -> Direction
+right N = W
+right W = S
+right S = E
+right E = N
+
+
+-- Init a new grid with only white squares
+initGrid :: Grid
+initGrid = Grid (replicate width [ white | x <- [1..height] ])
+
+
+-- UI main function
 
 main :: IO ()
 main =
@@ -28,12 +61,12 @@ main =
 
     ---- Canvas
     canvas <- drawingAreaNew
-    canvas `onSizeRequest` return (Requisition width height)
+    canvas `onSizeRequest` return (Requisition canvasWidth canvasHeight)
     canvas `onExpose` render canvas
 
     -- Play Button
-    playButton <- buttonNewWithLabel "Play"
-    playButton `onClicked` putStrLn "Play clicked"
+    playButton <- buttonNewWithLabel "Clear"
+    playButton `onClicked` putStrLn "Clear clicked"
 
 
     -- Layout Global
@@ -41,12 +74,12 @@ main =
     containerAdd lay canvas
     containerAdd lay playButton
 
-    -- Add layouts to window
+    -- Add layouts to window and render
     containerAdd win lay
-
     widgetShowAll win
-
     mainGUI
+
+-- rendering the scene
 
 render :: DrawingArea -> event -> IO Bool
 render canvas _evt =
@@ -55,3 +88,17 @@ render canvas _evt =
      gc <- gcNew dw
      drawRectangle dw gc True 0 0 squareSize squareSize
      return True
+
+-- draw a square on the given canvas, at the given position with the given
+-- color
+
+drawSquare :: DrawingArea -> Pos -> Color -> IO Bool
+drawSquare = undefined
+
+
+-- ### Utils ###
+
+-- Colors
+white, black :: Color
+white = Color 65535 65535 65535
+black = Color 0 0 0
