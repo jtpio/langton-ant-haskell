@@ -86,14 +86,23 @@ render canvas _evt =
   do dw <- widgetGetDrawWindow canvas
      drawWindowClear dw
      gc <- gcNew dw
-     drawRectangle dw gc True 0 0 squareSize squareSize
+     drawSquare dw (100,100) black
+     drawSquare dw (42,42) black
+     drawSquare dw (67,99) black
      return True
 
 -- draw a square on the given canvas, at the given position with the given
 -- color
 
-drawSquare :: DrawingArea -> Pos -> Color -> IO Bool
-drawSquare = undefined
+drawSquare :: DrawWindow -> Pos -> Color -> IO Bool
+drawSquare dw (x,y) color =
+  do
+    currStyle <- gcNewWithValues dw newGCValues{ foreground = color }
+    drawRectangle dw currStyle True (scale x) (scale y) squareSize squareSize
+    return True
+
+    where
+      scale x = x * squareSize
 
 
 -- ### Utils ###
