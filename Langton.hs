@@ -27,7 +27,7 @@ type Pos = (Int, Int)
 -- Position of the Ant is set
 type Ant = (Pos, Direction)
 
--- Moving functions
+-- Find next direction when turning left or right
 
 left :: Direction -> Direction
 left N = E
@@ -41,10 +41,56 @@ right W = S
 right S = E
 right E = N
 
+-- Move the ant
 
--- Init a new grid with only white squares
+move :: Ant -> Ant
+move ((x,y), dir) = case dir of
+  N -> ((x, mod (y-1) height), dir)
+  S -> ((x, mod (y+1) height), dir)
+  W -> ((mod (x-1) width, y), dir)
+  E -> ((mod (x+1) width, y), dir)
+
+
+-- Init a new grid
 initGrid :: Grid
-initGrid = Grid (replicate width [ white | x <- [1..height] ])
+initGrid = Grid (replicate width [ grass | x <- [0..height] ])
+
+-- Tick
+
+tick :: IO Bool
+tick = undefined
+
+-- Render the scene
+
+render :: DrawingArea -> event -> IO Bool
+render canvas _evt =
+  do dw <- widgetGetDrawWindow canvas
+     drawWindowClear dw
+     gc <- gcNew dw
+     drawGrid dw initGrid
+     return True
+
+-- Draw a square on the given canvas, at the given position with the given
+-- color
+
+drawSquare :: DrawWindow -> Pos -> Color -> IO Bool
+drawSquare dw (x,y) color =
+  do
+    currStyle <- gcNewWithValues dw newGCValues{ foreground = color }
+    drawRectangle dw currStyle True (scale x) (scale y) squareSize squareSize
+    return True
+    where
+      scale x = x * squareSize
+
+-- Draw the grid
+
+drawGrid :: DrawWindow -> Grid -> IO Bool
+drawGrid dw (Grid grid) =
+  do
+    sequence_ $
+      map (\(i,j) -> drawSquare dw (i,j) (grid !! i !! j)) [ (x,y) | x <- [0..width], y <- [0..height] ]
+
+    return True
 
 
 -- UI main function
@@ -68,7 +114,6 @@ main =
     playButton <- buttonNewWithLabel "Clear"
     playButton `onClicked` putStrLn "Clear clicked"
 
-
     -- Layout Global
     lay <- vBoxNew False 5
     containerAdd lay canvas
@@ -79,31 +124,6 @@ main =
     widgetShowAll win
     mainGUI
 
--- rendering the scene
-
-render :: DrawingArea -> event -> IO Bool
-render canvas _evt =
-  do dw <- widgetGetDrawWindow canvas
-     drawWindowClear dw
-     gc <- gcNew dw
-     drawSquare dw (100,100) black
-     drawSquare dw (42,42) black
-     drawSquare dw (67,99) black
-     return True
-
--- draw a square on the given canvas, at the given position with the given
--- color
-
-drawSquare :: DrawWindow -> Pos -> Color -> IO Bool
-drawSquare dw (x,y) color =
-  do
-    currStyle <- gcNewWithValues dw newGCValues{ foreground = color }
-    drawRectangle dw currStyle True (scale x) (scale y) squareSize squareSize
-    return True
-
-    where
-      scale x = x * squareSize
-
 
 -- ### Utils ###
 
@@ -111,3 +131,6 @@ drawSquare dw (x,y) color =
 white, black :: Color
 white = Color 65535 65535 65535
 black = Color 0 0 0
+red   = Color 65535 0 0
+green = Color 0 65535 0
+grass = Color 1792 36608 0
