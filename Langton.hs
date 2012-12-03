@@ -55,10 +55,41 @@ move ((x,y), dir) = case dir of
 initGrid :: Grid
 initGrid = Grid (replicate width [ grass | x <- [0..height] ])
 
--- Tick
+-- Create an ant in the middle of the screen and going to the west direction
+ant :: Ant
+ant = ((width `div` 2, height `div` 2), W)
 
-tick :: IO Bool
-tick = undefined
+-- #### Tick and update ------------------------------------------------------
+
+tick :: DrawWindow -> IO Bool
+tick dw =
+  do
+    step dw ant initGrid
+    return True
+
+
+step :: DrawWindow -> Ant -> Grid -> IO (Grid, Ant)
+step dw ((x,y),dir) grid =
+  do
+    let currColor = (rows grid) !! x !! y in
+      case currColor of
+        grass ->
+          do
+            drawSquare dw (x,y) black
+            return (updateGrid grid (x,y) black, move ((x,y), right dir))
+        black ->
+          do
+            drawSquare dw (x,y) grass
+            return (updateGrid grid (x,y) grass, move ((x,y), left dir))
+
+-- Update the grid
+-- (from our lab 3 Sudoku)
+
+updateGrid :: Grid -> Pos -> Color -> Grid
+updateGrid (Grid grid) (x,y) color = Grid (grid !!= (x, newValue))
+    where newValue = (grid !! x) !!= (y, color)
+
+-- #### Drawing function -----------------------------------------------------
 
 -- Render the scene
 
@@ -66,7 +97,6 @@ render :: DrawingArea -> event -> IO Bool
 render canvas _evt =
   do dw <- widgetGetDrawWindow canvas
      drawWindowClear dw
-     gc <- gcNew dw
      drawGrid dw initGrid
      return True
 
@@ -93,7 +123,7 @@ drawGrid dw (Grid grid) =
     return True
 
 
--- UI main function
+-- #### UI main function -----------------------------------------------------
 
 main :: IO ()
 main =
@@ -122,10 +152,15 @@ main =
     -- Add layouts to window and render
     containerAdd win lay
     widgetShowAll win
+
+    -- Launch simulation
+    dw <- widgetGetDrawWindow canvas
+    timeoutAdd (tick dw) 500
+
     mainGUI
 
 
--- ### Utils ###
+-- #### Utils ----------------------------------------------------------------
 
 -- Colors
 white, black :: Color
@@ -134,3 +169,14 @@ black = Color 0 0 0
 red   = Color 65535 0 0
 green = Color 0 65535 0
 grass = Color 1792 36608 0
+
+-- Updates the given list with the new value at the given index
+-- (from our lab 3 Sudoku)
+
+(!!=) :: [a] -> (Int,a) -> [a]
+(!!=) [] _ = []
+(!!=) ls (index, newValue)
+      | index < length ls && index >= 0 =
+        (take index ls) ++ [newValue] ++ (drop (index+1) ls)
+      | otherwise = ls
+
