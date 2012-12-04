@@ -26,11 +26,11 @@ data Direction = N | S | W | E
 data Grid = Grid { rows :: [[Color]] }
     deriving (Eq, Show)
 
--- Types
+-- Position, according to the grid
 
 type Pos = (Int, Int)
 
--- Position of the Ant is set
+-- An ant is just a position and a direction
 
 type Ant  = (Pos, Direction)
 type Ants = [Ant]
@@ -72,6 +72,13 @@ move ((x,y), dir) = case dir of
   W -> ((mod (x-1) width, y), dir)
   E -> ((mod (x+1) width, y), dir)
 
+-- To get an IO from moving the ant
+
+moveAnt :: Ant -> IO Ant
+moveAnt ant =
+  do
+    return (move ant)
+
 -- Add a new ant at the click position
 
 addAnt :: DrawingArea -> IORef Ants -> IO Bool
@@ -86,6 +93,8 @@ addAnt canvas ants =
       scale x = x `div` squareSize
 
 -- #### Tick, update and step ------------------------------------------------
+
+-- Main loop. Get the previous positions and update them
 
 tick :: DrawingArea-> IORef Ants -> IORef Grid -> IO Bool
 tick canvas antsRef gridRef =
@@ -102,6 +111,8 @@ tick canvas antsRef gridRef =
 
     return True
 
+-- Update the list of ants
+
 update :: DrawWindow -> Ants -> Grid -> Ants -> IO (Ants,Grid)
 update dw (ant:ants') grid nextAnts =
   do
@@ -112,6 +123,10 @@ update dw [] grid nextAnts =
   do
     return (nextAnts, grid)
 
+-- Update a specific ant
+-- We just redraw redraw the squares reached by the ant, and not the entire
+-- scene at each frame
+
 step :: DrawWindow -> Ant -> Grid -> IO (Ant, Grid)
 step dw ((x,y),dir) grid =
   do
@@ -119,12 +134,20 @@ step dw ((x,y),dir) grid =
       case currColor of
         Color 1792 36608 0 -> do
               drawSquare dw (x,y) black
-              return (move ((x,y), right dir), updateGrid grid (x,y) black)
+              newAnt <- getNewAnt (x,y) dir right
+              drawAnt dw newAnt
+              return (newAnt, updateGrid grid (x,y) black)
         Color 0 0 0 -> do
               drawSquare dw (x,y) grass
-              return (move ((x,y), left dir), updateGrid grid (x,y) grass)
+              newAnt <- getNewAnt (x,y) dir left
+              drawAnt dw newAnt
+              return (newAnt, updateGrid grid (x,y) grass)
+      where
+        -- Drawing the ant in red
+        drawAnt dw ant = drawSquare dw (fst ant) red
+        getNewAnt pos dir turn = moveAnt (pos, turn dir)
 
--- Update the grid
+-- Update the grid, set a given color at a given position
 
 updateGrid :: Grid -> Pos -> Color -> Grid
 updateGrid (Grid grid) (x,y) color = Grid (grid !!= (x, newValue))
@@ -168,18 +191,20 @@ drawGrid dw (Grid grid) =
 
 -- #### UI main function -----------------------------------------------------
 
+-- The main function
+
 main :: IO ()
 main =
   do
     initGUI
 
-    -- window
+    -- Window
     win <- windowNew
     windowSetTitle win "Langton's Ant"
     win `onDestroy` mainQuit
 
     -- Create references to the list of ants and the grid
-    ants <- newIORef [] -- List of ants
+    ants <- newIORef []       -- List of ants
     grid <- newIORef initGrid -- Only one grid for all the ants
 
     writeIORef ants (middleAnt : [])
@@ -194,19 +219,21 @@ main =
     playButton <- buttonNewWithLabel "Reset"
     playButton `onClicked` reset canvas ants grid
 
-    -- Layout Global
+    -- Layout
     lay <- vBoxNew False 5
     containerAdd lay canvas
     containerAdd lay playButton
 
-    -- Add layouts to window and render
+    -- Add layout to window and render
     containerAdd win lay
     widgetShowAll win
 
-    -- Launch simulation
-    timeoutAdd (tick canvas ants grid) 1
+    -- Start simulation
+    timeoutAdd (tick canvas ants grid) 2
 
     mainGUI
+
+-- Reset the scene with a cleared screen, and reset IORefs
 
 reset :: DrawingArea -> IORef Ants -> IORef Grid -> IO ()
 reset canvas antsRef gridRef =
@@ -220,6 +247,7 @@ reset canvas antsRef gridRef =
 -- #### Utils ----------------------------------------------------------------
 
 -- Colors
+
 white, black, red, green, grass :: Color
 white = Color 65535 65535 65535
 black = Color 0 0 0
