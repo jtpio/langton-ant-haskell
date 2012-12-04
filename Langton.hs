@@ -89,12 +89,13 @@ step dw ((x,y),dir) grid =
   do
     let currColor = (rows grid) !! x !! y in
       case currColor of
-        grass -> do
+        Color 1792 36608 0 -> do
                   drawSquare dw (x,y) black
                   return (updateGrid grid (x,y) black, move ((x,y), right dir))
-        black -> do
+        Color 0 0 0 -> do
                   drawSquare dw (x,y) grass
                   return (updateGrid grid (x,y) grass, move ((x,y), left dir))
+
 
 -- Update the grid
 -- (from our lab 3 Sudoku)
@@ -153,7 +154,7 @@ main =
     grid <- newIORef Grid
 
     writeIORef ants (middleAnt : [])
-    -- writeIORef grid initGrid
+    --writeIORef grid initGrid
 
     ---- Canvas
     canvas <- drawingAreaNew
@@ -182,7 +183,7 @@ main =
 -- #### Utils ----------------------------------------------------------------
 
 -- Colors
-white, black :: Color
+white, black, red, green, grass :: Color
 white = Color 65535 65535 65535
 black = Color 0 0 0
 red   = Color 65535 0 0
