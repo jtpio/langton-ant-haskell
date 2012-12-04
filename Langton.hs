@@ -26,7 +26,8 @@ data Grid = Grid { rows :: [[Color]] }
 type Pos = (Int, Int)
 
 -- Position of the Ant is set
-type Ant = (Pos, Direction)
+type Ant  = (Pos, Direction)
+type Ants = [Ant]
 
 type State = (Ant,Grid)
 
@@ -59,8 +60,18 @@ initGrid :: Grid
 initGrid = Grid (replicate width [ grass | x <- [0..height] ])
 
 -- Create an ant in the middle of the screen and going to the west direction
-ant :: Ant
-ant = ((width `div` 2, height `div` 2), W)
+middleAnt :: Ant
+middleAnt = ((width `div` 2, height `div` 2), W)
+
+addAnt :: DrawingArea -> IORef Ants -> IO Bool
+addAnt canvas ants =
+  do
+    pos <- widgetGetPointer canvas
+    prevAnts <- readIORef ants
+    writeIORef ants ((pos, W) : prevAnts)
+    return True
+
+    --tick canvas ((x `div` squareSize, y `div` squareSize), W) initGrid
 
 -- #### Tick and update ------------------------------------------------------
 
@@ -138,14 +149,20 @@ main =
     windowSetTitle win "Langton's Ant"
     win `onDestroy` mainQuit
 
+    ants <- newIORef []
+    grid <- newIORef Grid
+
+    writeIORef ants (middleAnt : [])
+    -- writeIORef grid initGrid
+
     ---- Canvas
     canvas <- drawingAreaNew
     canvas `onSizeRequest` return (Requisition canvasWidth canvasHeight)
     canvas `onExpose` render canvas
+    canvas `onButtonPress` \_ -> addAnt canvas ants
 
     -- Play Button
     playButton <- buttonNewWithLabel "Play"
-    -- playButton `onClicked` tick canvas ant initGrid
 
     -- Layout Global
     lay <- vBoxNew False 5
@@ -157,7 +174,8 @@ main =
     widgetShowAll win
 
     -- Launch simulation
-    timeoutAdd (tick canvas ant initGrid) 500
+    -- timeoutAdd (tick canvas ant initGrid) 500
+    --timeoutAdd (tick canvas ants grid) 500
 
     mainGUI
 
