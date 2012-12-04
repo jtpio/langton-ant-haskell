@@ -5,6 +5,8 @@ import Graphics.UI.Gtk.Gdk.GC
 import Data.IORef
 import Test.QuickCheck
 
+-- #### Parameters -----------------------------------------------------------
+
 width, height, squareSize, canvasWidth, canvasHeight :: Int
 width  = 200 -- number of squares
 height  = 150 -- number of squares
@@ -12,22 +14,40 @@ squareSize = 5 -- px
 canvasWidth = width * squareSize -- px
 canvasHeight = height * squareSize -- px
 
--- Data types
+-- #### Data types ant types -------------------------------------------------
 
 -- Direction: North, South, West, East
+
 data Direction = N | S | W | E
   deriving(Eq, Show)
 
--- Grid
+-- Grid, a matrix of colors
+
 data Grid = Grid { rows :: [[Color]] }
     deriving (Eq, Show)
 
 -- Types
+
 type Pos = (Int, Int)
 
 -- Position of the Ant is set
+
 type Ant  = (Pos, Direction)
 type Ants = [Ant]
+
+-- #### Grid related functions -----------------------------------------------
+
+-- Init a new grid with the same color everywhere
+
+initGrid :: Grid
+initGrid = Grid (replicate width [ grass | x <- [0..height] ])
+
+-- #### Ant related functions ------------------------------------------------
+
+-- Create an ant in the middle of the screen and going to the West direction
+
+middleAnt :: Ant
+middleAnt = ((width `div` 2, height `div` 2), W)
 
 -- Find next direction when turning left or right
 
@@ -52,14 +72,7 @@ move ((x,y), dir) = case dir of
   W -> ((mod (x-1) width, y), dir)
   E -> ((mod (x+1) width, y), dir)
 
-
--- Init a new grid
-initGrid :: Grid
-initGrid = Grid (replicate width [ grass | x <- [0..height] ])
-
--- Create an ant in the middle of the screen and going to the west direction
-middleAnt :: Ant
-middleAnt = ((width `div` 2, height `div` 2), W)
+-- Add a new ant at the click position
 
 addAnt :: DrawingArea -> IORef Ants -> IO Bool
 addAnt canvas ants =
@@ -72,7 +85,7 @@ addAnt canvas ants =
     where
       scale x = x `div` squareSize
 
--- #### Tick and update ------------------------------------------------------
+-- #### Tick, update and step ------------------------------------------------
 
 tick :: DrawingArea-> IORef Ants -> IORef Grid -> IO Bool
 tick canvas antsRef gridRef =
@@ -81,13 +94,9 @@ tick canvas antsRef gridRef =
     -- Get previous values
     ants <- readIORef antsRef
     grid <- readIORef gridRef
-    -- New step
+    -- New step for all the ants
     (newAnts, newGrid) <- update dw ants grid []
-
-    -- New step (OLD)
-    --(newGrid, newAnt) <- step dw ant grid
     -- Save new values
-
     writeIORef antsRef newAnts
     writeIORef gridRef newGrid
 
@@ -98,7 +107,6 @@ update dw (ant:ants') grid nextAnts =
   do
     (newAnt, newGrid) <- step dw ant grid
     update dw ants' newGrid (newAnt:nextAnts)
-    --return (newAnt:ants', newGrid)
 
 update dw [] grid nextAnts =
   do
@@ -110,15 +118,13 @@ step dw ((x,y),dir) grid =
     let currColor = (rows grid) !! x !! y in
       case currColor of
         Color 1792 36608 0 -> do
-                  drawSquare dw (x,y) black
-                  return (move ((x,y), right dir), updateGrid grid (x,y) black)
+              drawSquare dw (x,y) black
+              return (move ((x,y), right dir), updateGrid grid (x,y) black)
         Color 0 0 0 -> do
-                  drawSquare dw (x,y) grass
-                  return (move ((x,y), left dir), updateGrid grid (x,y) grass)
-
+              drawSquare dw (x,y) grass
+              return (move ((x,y), left dir), updateGrid grid (x,y) grass)
 
 -- Update the grid
--- (from our lab 3 Sudoku)
 
 updateGrid :: Grid -> Pos -> Color -> Grid
 updateGrid (Grid grid) (x,y) color = Grid (grid !!= (x, newValue))
@@ -153,7 +159,9 @@ drawGrid :: DrawWindow -> Grid -> IO Bool
 drawGrid dw (Grid grid) =
   do
     sequence_ $
-      map (\(i,j) -> drawSquare dw (i,j) (grid !! i !! j)) [ (x,y) | x <- [0..width], y <- [0..height] ]
+      map
+        (\(i,j) -> drawSquare dw (i,j)
+        (grid !! i !! j)) [ (x,y) | x <- [0..width], y <- [0..height] ]
 
     return True
 
@@ -176,13 +184,13 @@ main =
 
     writeIORef ants (middleAnt : [])
 
-    ---- Canvas
+    -- Canvas
     canvas <- drawingAreaNew
     canvas `onSizeRequest` return (Requisition canvasWidth canvasHeight)
     canvas `onExpose` render canvas
     canvas `onButtonPress` \_ -> addAnt canvas ants
 
-    -- Play Button
+    -- Reset Button
     playButton <- buttonNewWithLabel "Reset"
     playButton `onClicked` reset canvas ants grid
 
@@ -196,7 +204,7 @@ main =
     widgetShowAll win
 
     -- Launch simulation
-    timeoutAdd (tick canvas ants grid) 5
+    timeoutAdd (tick canvas ants grid) 1
 
     mainGUI
 
@@ -220,7 +228,6 @@ green = Color 0 65535 0
 grass = Color 1792 36608 0
 
 -- Updates the given list with the new value at the given index
--- (from our lab 3 Sudoku)
 
 (!!=) :: [a] -> (Int,a) -> [a]
 (!!=) [] _ = []
