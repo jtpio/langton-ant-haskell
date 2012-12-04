@@ -15,8 +15,8 @@ The program uses the library **Gtk2Hs** to render the simulation on a canvas.
 ## Screenshots
 
 ### One ant
-![One Ant](screenshots/one_ant.png "Langton's Ant Haskell")
+![One Ant](https://raw.github.com/jtuloup/langton-ant-haskell/master/screenshots/one_ant.png  "Langton's Ant Haskell")
 
 ### Multiple ants
-![Multiple Ants](screenshots/multiple_ants.png "Langton's Ant Haskell")
+![Multiple Ants](https://raw.github.com/jtuloup/langton-ant-haskell/master/screenshots/multiple_ants.png "Langton's Ant Haskell")
 
