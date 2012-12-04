@@ -29,8 +29,6 @@ type Pos = (Int, Int)
 type Ant  = (Pos, Direction)
 type Ants = [Ant]
 
-type State = (Ant,Grid)
-
 -- Find next direction when turning left or right
 
 left :: Direction -> Direction
@@ -66,21 +64,28 @@ middleAnt = ((width `div` 2, height `div` 2), W)
 addAnt :: DrawingArea -> IORef Ants -> IO Bool
 addAnt canvas ants =
   do
-    pos <- widgetGetPointer canvas
+    (x,y) <- widgetGetPointer canvas
     prevAnts <- readIORef ants
-    writeIORef ants ((pos, W) : prevAnts)
+    writeIORef ants (((scale x, scale y), W) : prevAnts)
     return True
 
-    --tick canvas ((x `div` squareSize, y `div` squareSize), W) initGrid
+    where
+      scale x = x `div` squareSize
 
 -- #### Tick and update ------------------------------------------------------
 
-tick :: DrawingArea-> Ant -> Grid -> IO Bool
-tick canvas ant grid =
+tick :: DrawingArea-> IORef Ants -> IORef Grid -> IO Bool
+tick canvas antsRef gridRef =
   do
-    putStrLn "Tick!"
+    -- get previous values
+    (ant:ants') <- readIORef antsRef
+    grid <- readIORef gridRef
     dw <- widgetGetDrawWindow canvas
     (newGrid, newAnt) <- step dw ant grid
+    -- save new values
+    writeIORef antsRef (newAnt:ants')
+    writeIORef gridRef newGrid
+
     return True
 
 
@@ -150,11 +155,11 @@ main =
     windowSetTitle win "Langton's Ant"
     win `onDestroy` mainQuit
 
+    -- Create references to the list of ants and the grid
     ants <- newIORef []
-    grid <- newIORef Grid
+    grid <- newIORef initGrid
 
     writeIORef ants (middleAnt : [])
-    --writeIORef grid initGrid
 
     ---- Canvas
     canvas <- drawingAreaNew
@@ -163,7 +168,8 @@ main =
     canvas `onButtonPress` \_ -> addAnt canvas ants
 
     -- Play Button
-    playButton <- buttonNewWithLabel "Play"
+    playButton <- buttonNewWithLabel "Reset"
+    playButton `onClicked` reset canvas ants grid
 
     -- Layout Global
     lay <- vBoxNew False 5
@@ -175,10 +181,18 @@ main =
     widgetShowAll win
 
     -- Launch simulation
-    -- timeoutAdd (tick canvas ant initGrid) 500
-    --timeoutAdd (tick canvas ants grid) 500
+    timeoutAdd (tick canvas ants grid) 1
 
     mainGUI
+
+reset :: DrawingArea -> IORef Ants -> IORef Grid -> IO ()
+reset canvas antsRef gridRef =
+  do
+    dw <- widgetGetDrawWindow canvas
+    drawWindowClear dw
+    drawGrid dw initGrid
+    writeIORef antsRef (middleAnt:[])
+    writeIORef gridRef initGrid
 
 -- #### Utils ----------------------------------------------------------------
 
