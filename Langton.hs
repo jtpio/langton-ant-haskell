@@ -2,6 +2,7 @@ module Main where
 
 import Graphics.UI.Gtk
 import Graphics.UI.Gtk.Gdk.GC
+import Data.IORef
 import Test.QuickCheck
 
 width, height, squareSize, canvasWidth, canvasHeight :: Int
@@ -26,6 +27,8 @@ type Pos = (Int, Int)
 
 -- Position of the Ant is set
 type Ant = (Pos, Direction)
+
+type State = (Ant,Grid)
 
 -- Find next direction when turning left or right
 
@@ -61,10 +64,12 @@ ant = ((width `div` 2, height `div` 2), W)
 
 -- #### Tick and update ------------------------------------------------------
 
-tick :: DrawWindow -> IO Bool
-tick dw =
+tick :: DrawingArea-> Ant -> Grid -> IO Bool
+tick canvas ant grid =
   do
-    step dw ant initGrid
+    putStrLn "Tick!"
+    dw <- widgetGetDrawWindow canvas
+    (newGrid, newAnt) <- step dw ant grid
     return True
 
 
@@ -73,14 +78,12 @@ step dw ((x,y),dir) grid =
   do
     let currColor = (rows grid) !! x !! y in
       case currColor of
-        grass ->
-          do
-            drawSquare dw (x,y) black
-            return (updateGrid grid (x,y) black, move ((x,y), right dir))
-        black ->
-          do
-            drawSquare dw (x,y) grass
-            return (updateGrid grid (x,y) grass, move ((x,y), left dir))
+        grass -> do
+                  drawSquare dw (x,y) black
+                  return (updateGrid grid (x,y) black, move ((x,y), right dir))
+        black -> do
+                  drawSquare dw (x,y) grass
+                  return (updateGrid grid (x,y) grass, move ((x,y), left dir))
 
 -- Update the grid
 -- (from our lab 3 Sudoku)
@@ -141,8 +144,8 @@ main =
     canvas `onExpose` render canvas
 
     -- Play Button
-    playButton <- buttonNewWithLabel "Clear"
-    playButton `onClicked` putStrLn "Clear clicked"
+    playButton <- buttonNewWithLabel "Play"
+    -- playButton `onClicked` tick canvas ant initGrid
 
     -- Layout Global
     lay <- vBoxNew False 5
@@ -154,11 +157,9 @@ main =
     widgetShowAll win
 
     -- Launch simulation
-    dw <- widgetGetDrawWindow canvas
-    timeoutAdd (tick dw) 500
+    timeoutAdd (tick canvas ant initGrid) 500
 
     mainGUI
-
 
 -- #### Utils ----------------------------------------------------------------
 
@@ -179,4 +180,3 @@ grass = Color 1792 36608 0
       | index < length ls && index >= 0 =
         (take index ls) ++ [newValue] ++ (drop (index+1) ls)
       | otherwise = ls
-
