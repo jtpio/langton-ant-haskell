@@ -77,29 +77,44 @@ addAnt canvas ants =
 tick :: DrawingArea-> IORef Ants -> IORef Grid -> IO Bool
 tick canvas antsRef gridRef =
   do
-    -- get previous values
-    (ant:ants') <- readIORef antsRef
-    grid <- readIORef gridRef
     dw <- widgetGetDrawWindow canvas
-    (newGrid, newAnt) <- step dw ant grid
-    -- save new values
-    writeIORef antsRef (newAnt:ants')
+    -- Get previous values
+    ants <- readIORef antsRef
+    grid <- readIORef gridRef
+    -- New step
+    (newAnts, newGrid) <- update dw ants grid []
+
+    -- New step (OLD)
+    --(newGrid, newAnt) <- step dw ant grid
+    -- Save new values
+
+    writeIORef antsRef newAnts
     writeIORef gridRef newGrid
 
     return True
 
+update :: DrawWindow -> Ants -> Grid -> Ants -> IO (Ants,Grid)
+update dw (ant:ants') grid nextAnts =
+  do
+    (newAnt, newGrid) <- step dw ant grid
+    update dw ants' newGrid (newAnt:nextAnts)
+    --return (newAnt:ants', newGrid)
 
-step :: DrawWindow -> Ant -> Grid -> IO (Grid, Ant)
+update dw [] grid nextAnts =
+  do
+    return (nextAnts, grid)
+
+step :: DrawWindow -> Ant -> Grid -> IO (Ant, Grid)
 step dw ((x,y),dir) grid =
   do
     let currColor = (rows grid) !! x !! y in
       case currColor of
         Color 1792 36608 0 -> do
                   drawSquare dw (x,y) black
-                  return (updateGrid grid (x,y) black, move ((x,y), right dir))
+                  return (move ((x,y), right dir), updateGrid grid (x,y) black)
         Color 0 0 0 -> do
                   drawSquare dw (x,y) grass
-                  return (updateGrid grid (x,y) grass, move ((x,y), left dir))
+                  return (move ((x,y), left dir), updateGrid grid (x,y) grass)
 
 
 -- Update the grid
@@ -156,8 +171,8 @@ main =
     win `onDestroy` mainQuit
 
     -- Create references to the list of ants and the grid
-    ants <- newIORef []
-    grid <- newIORef initGrid
+    ants <- newIORef [] -- List of ants
+    grid <- newIORef initGrid -- Only one grid for all the ants
 
     writeIORef ants (middleAnt : [])
 
@@ -181,7 +196,7 @@ main =
     widgetShowAll win
 
     -- Launch simulation
-    timeoutAdd (tick canvas ants grid) 1
+    timeoutAdd (tick canvas ants grid) 5
 
     mainGUI
 
